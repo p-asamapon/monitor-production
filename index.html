@@ -59,4 +59,102 @@
         </div>
     </div>
 
-    <table id
+    <table id="detailTable">
+        <thead>
+            <tr>
+                <th>เครื่องจักร</th>
+                <th>สถานะ</th>
+                <th>ยอดผลิต</th>
+                <th>Zone 1</th>
+                <th>Zone 2</th>
+                <th>Zone 3</th>
+            </tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+    </table>
+</div>
+
+<script>
+    let myChart;
+
+    function updateData() {
+        const selectedDate = document.getElementById('dateFilter').value;
+        const machines = ['M1', 'M2', 'M3', 'M4', 'M5', 'M6', 'M7', 'M8'];
+        const colors = ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40', '#C9CBCF', '#455A64'];
+        
+        // จำลองการดึงข้อมูลตามวันที่ (ในอนาคตใช้ fetch ดึงจาก Google Sheets)
+        // สร้างข้อมูล 24 ชั่วโมงสำหรับแต่ละเครื่อง
+        const hours = Array.from({length: 24}, (_, i) => `${i}:00`);
+        
+        const datasets = machines.map((m, index) => {
+            return {
+                label: m,
+                data: Array.from({length: 24}, () => Math.floor(Math.random() * 30 + 180)), // สุ่มเลข 180-210
+                borderColor: colors[index],
+                backgroundColor: colors[index],
+                borderWidth: 2,
+                tension: 0.3,
+                hidden: false // ตั้งค่าเริ่มต้นให้โชว์ทุกเครื่อง
+            }
+        });
+
+        // อัปเดตกราฟ
+        const ctx = document.getElementById('productionChart').getContext('2d');
+        if (myChart) myChart.destroy();
+        
+        myChart = new Chart(ctx, {
+            type: 'line',
+            data: { labels: hours, datasets: datasets },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { position: 'top' },
+                    title: { display: true, text: 'กราฟความร้อนรายเครื่อง ประจำวันที่ ' + selectedDate }
+                },
+                scales: {
+                    y: { title: { display: true, text: 'Temperature (°C)' } }
+                }
+            }
+        });
+
+        // อัปเดตตารางและตัวเลขสรุป
+        updateSummary(machines);
+    }
+
+    function updateSummary(machines) {
+        const tbody = document.getElementById('tableBody');
+        tbody.innerHTML = '';
+        let totalProd = 0;
+        let temps = [];
+
+        machines.forEach(m => {
+            const q = Math.floor(Math.random() * 1000);
+            const z1 = (Math.random() * 10 + 190).toFixed(1);
+            const z2 = (Math.random() * 10 + 195).toFixed(1);
+            const z3 = (Math.random() * 10 + 185).toFixed(1);
+            
+            totalProd += q;
+            temps.push(parseFloat(z1));
+
+            tbody.innerHTML += `
+                <tr>
+                    <td><span class="m-badge" style="background:#eee">${m}</span></td>
+                    <td><span style="color:green">● Online</span></td>
+                    <td>${q.toLocaleString()}</td>
+                    <td>${z1}°C</td>
+                    <td>${z2}°C</td>
+                    <td>${z3}°C</td>
+                </tr>
+            `;
+        });
+
+        document.getElementById('totalQty').innerText = totalProd.toLocaleString();
+        document.getElementById('avgTemp').innerText = (temps.reduce((a,b)=>a+b,0)/8).toFixed(1) + '°C';
+    }
+
+    // รันครั้งแรกเมื่อโหลดหน้าเว็บ
+    window.onload = updateData;
+</script>
+
+</body>
+</html>
