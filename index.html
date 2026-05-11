@@ -3,157 +3,156 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Advanced Production Monitor</title>
+    <title>8-Screen Machine Monitor</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        :root { --primary: #2c3e50; --accent: #3498db; }
-        body { font-family: 'Inter', sans-serif; background: #f0f2f5; margin: 0; padding: 20px; }
-        .container { max-width: 1200px; margin: auto; }
-        .header-panel { 
-            background: white; padding: 20px; border-radius: 12px; 
-            display: flex; justify-content: space-between; align-items: center;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.05); margin-bottom: 20px;
+        :root {
+            --bg-color: #1a1a1a;
+            --card-bg: #2d2d2d;
+            --text-color: #ecf0f1;
         }
-        .filter-group { display: flex; align-items: center; gap: 10px; }
-        input[type="date"] { padding: 8px; border-radius: 6px; border: 1px solid #ddd; }
+        body {
+            font-family: 'Tahoma', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding: 10px;
+            background: var(--card-bg);
+            border-radius: 8px;
+        }
+        /* สร้าง Grid 8 จอ (4 คอลัมน์ 2 แถว) */
+        .monitor-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 15px;
+        }
+        .machine-card {
+            background: var(--card-bg);
+            border: 1px solid #444;
+            border-radius: 8px;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+        }
+        .machine-header {
+            display: flex;
+            justify-content: space-between;
+            border-bottom: 1px solid #444;
+            padding-bottom: 10px;
+            margin-bottom: 10px;
+        }
+        .machine-title { font-size: 18px; font-weight: bold; color: #3498db; }
+        .temp-display { font-size: 20px; color: #e74c3c; font-weight: bold; }
         
-        .grid { display: grid; grid-template-columns: 3fr 1fr; gap: 20px; }
-        .chart-box { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
-        .stats-box { display: flex; flex-direction: column; gap: 15px; }
-        .stat-card { background: white; padding: 15px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); text-align: center; }
+        .zone-info {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 5px;
+            margin-top: 10px;
+            font-size: 12px;
+            text-align: center;
+        }
+        .zone-box { background: #3d3d3d; padding: 5px; border-radius: 4px; }
         
-        table { width: 100%; border-collapse: collapse; background: white; margin-top: 20px; border-radius: 12px; overflow: hidden; }
-        th, td { padding: 12px; text-align: center; border-bottom: 1px solid #eee; }
-        th { background: var(--primary); color: white; }
-        .m-badge { padding: 4px 8px; border-radius: 4px; font-weight: bold; font-size: 0.8em; }
+        input[type="date"] {
+            padding: 8px;
+            background: #3d3d3d;
+            color: white;
+            border: none;
+            border-radius: 4px;
+        }
+        canvas { max-height: 180px; }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <div class="header-panel">
-        <h2>📊 Production Monitor (M1 - M8)</h2>
-        <div class="filter-group">
-            <label>เลือกวันที่ดูข้อมูล:</label>
-            <input type="date" id="dateFilter" value="2024-05-11" onchange="updateData()">
-        </div>
+<div class="header">
+    <div style="font-size: 24px; font-weight: bold;">🏭 8-Channel Production Monitor</div>
+    <div>
+        <label>วันที่: </label>
+        <input type="date" id="dateFilter" value="2024-05-11" onchange="initDashboard()">
     </div>
-
-    <div class="grid">
-        <div class="chart-box">
-            <canvas id="productionChart"></canvas>
-            <p style="font-size: 0.8em; color: #666; text-align: center; margin-top: 10px;">
-                *คลิกที่ชื่อเครื่องด้านบนเพื่อเปิด/ปิดเส้นกราฟ
-            </p>
-        </div>
-
-        <div class="stats-box">
-            <div class="stat-card">
-                <small>ยอดผลิตรวม (เลือกตามวัน)</small>
-                <div id="totalQty" style="font-size: 24px; font-weight: bold; color: #2ecc71;">0</div>
-            </div>
-            <div class="stat-card">
-                <small>อุณหภูมิเฉลี่ยสะสม</small>
-                <div id="avgTemp" style="font-size: 24px; font-weight: bold; color: #e74c3c;">0°C</div>
-            </div>
-        </div>
-    </div>
-
-    <table id="detailTable">
-        <thead>
-            <tr>
-                <th>เครื่องจักร</th>
-                <th>สถานะ</th>
-                <th>ยอดผลิต</th>
-                <th>Zone 1</th>
-                <th>Zone 2</th>
-                <th>Zone 3</th>
-            </tr>
-        </thead>
-        <tbody id="tableBody"></tbody>
-    </table>
 </div>
 
+<div class="monitor-grid" id="monitorContainer">
+    </div>
+
 <script>
-    let myChart;
-
-    function updateData() {
-        const selectedDate = document.getElementById('dateFilter').value;
-        const machines = ['M1', 'M2', 'M3', 'M4', 'M5', 'M6', 'M7', 'M8'];
-        const colors = ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40', '#C9CBCF', '#455A64'];
+    // รายชื่อเครื่องจักร (สมมติว่าไม่มี M2 ตามโจทย์)
+    const activeMachines = ["M1", "M3", "M4", "M5", "M6", "M7", "M8"]; 
+    
+    function initDashboard() {
+        const container = document.getElementById('monitorContainer');
+        container.innerHTML = ''; // ล้างหน้าจอเก่า
         
-        // จำลองการดึงข้อมูลตามวันที่ (ในอนาคตใช้ fetch ดึงจาก Google Sheets)
-        // สร้างข้อมูล 24 ชั่วโมงสำหรับแต่ละเครื่อง
-        const hours = Array.from({length: 24}, (_, i) => `${i}:00`);
-        
-        const datasets = machines.map((m, index) => {
-            return {
-                label: m,
-                data: Array.from({length: 24}, () => Math.floor(Math.random() * 30 + 180)), // สุ่มเลข 180-210
-                borderColor: colors[index],
-                backgroundColor: colors[index],
-                borderWidth: 2,
-                tension: 0.3,
-                hidden: false // ตั้งค่าเริ่มต้นให้โชว์ทุกเครื่อง
-            }
+        activeMachines.forEach(mId => {
+            // สร้าง Card สำหรับแต่ละเครื่อง
+            const card = document.createElement('div');
+            card.className = 'machine-card';
+            
+            // ข้อมูลจำลอง
+            const currentTemp = (Math.random() * 20 + 180).toFixed(1);
+            const prodQty = Math.floor(Math.random() * 1000);
+            
+            card.innerHTML = `
+                <div class="machine-header">
+                    <span class="machine-title">${mId}</span>
+                    <span class="temp-display">${currentTemp}°C</span>
+                </div>
+                <div style="font-size: 13px; margin-bottom: 5px;">ยอดผลิตรวม: <b>${prodQty}</b></div>
+                <canvas id="chart-${mId}"></canvas>
+                <div class="zone-info">
+                    <div class="zone-box">Z1: ${(Math.random()*5+190).toFixed(1)}°</div>
+                    <div class="zone-box">Z2: ${(Math.random()*5+195).toFixed(1)}°</div>
+                    <div class="zone-box">Z3: ${(Math.random()*5+185).toFixed(1)}°</div>
+                </div>
+            `;
+            
+            container.appendChild(card);
+            renderSmallChart(mId);
         });
+    }
 
-        // อัปเดตกราฟ
-        const ctx = document.getElementById('productionChart').getContext('2d');
-        if (myChart) myChart.destroy();
-        
-        myChart = new Chart(ctx, {
+    function renderSmallChart(mId) {
+        const ctx = document.getElementById(`chart-${mId}`).getContext('2d');
+        new Chart(ctx, {
             type: 'line',
-            data: { labels: hours, datasets: datasets },
+            data: {
+                labels: Array.from({length: 12}, (_, i) => `${i*2}:00`),
+                datasets: [{
+                    label: 'Heat',
+                    data: Array.from({length: 12}, () => Math.random() * 30 + 180),
+                    borderColor: '#3498db',
+                    backgroundColor: 'rgba(52, 152, 219, 0.1)',
+                    fill: true,
+                    pointRadius: 0,
+                    borderWidth: 2
+                }]
+            },
             options: {
                 responsive: true,
-                plugins: {
-                    legend: { position: 'top' },
-                    title: { display: true, text: 'กราฟความร้อนรายเครื่อง ประจำวันที่ ' + selectedDate }
-                },
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
                 scales: {
-                    y: { title: { display: true, text: 'Temperature (°C)' } }
+                    x: { display: false },
+                    y: { 
+                        grid: { color: '#444' },
+                        ticks: { color: '#888', font: { size: 10 } }
+                    }
                 }
             }
         });
-
-        // อัปเดตตารางและตัวเลขสรุป
-        updateSummary(machines);
     }
 
-    function updateSummary(machines) {
-        const tbody = document.getElementById('tableBody');
-        tbody.innerHTML = '';
-        let totalProd = 0;
-        let temps = [];
-
-        machines.forEach(m => {
-            const q = Math.floor(Math.random() * 1000);
-            const z1 = (Math.random() * 10 + 190).toFixed(1);
-            const z2 = (Math.random() * 10 + 195).toFixed(1);
-            const z3 = (Math.random() * 10 + 185).toFixed(1);
-            
-            totalProd += q;
-            temps.push(parseFloat(z1));
-
-            tbody.innerHTML += `
-                <tr>
-                    <td><span class="m-badge" style="background:#eee">${m}</span></td>
-                    <td><span style="color:green">● Online</span></td>
-                    <td>${q.toLocaleString()}</td>
-                    <td>${z1}°C</td>
-                    <td>${z2}°C</td>
-                    <td>${z3}°C</td>
-                </tr>
-            `;
-        });
-
-        document.getElementById('totalQty').innerText = totalProd.toLocaleString();
-        document.getElementById('avgTemp').innerText = (temps.reduce((a,b)=>a+b,0)/8).toFixed(1) + '°C';
-    }
-
-    // รันครั้งแรกเมื่อโหลดหน้าเว็บ
-    window.onload = updateData;
+    // เริ่มทำงาน
+    window.onload = initDashboard;
 </script>
 
 </body>
