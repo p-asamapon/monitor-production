@@ -2,157 +2,148 @@
 <html lang="th">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>8-Screen Machine Monitor</title>
+    <title>LIVE Production Monitor</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
     <style>
-        :root {
-            --bg-color: #1a1a1a;
-            --card-bg: #2d2d2d;
-            --text-color: #ecf0f1;
-        }
-        body {
-            font-family: 'Tahoma', sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            margin: 0;
-            padding: 20px;
-        }
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-            padding: 10px;
-            background: var(--card-bg);
-            border-radius: 8px;
-        }
-        /* สร้าง Grid 8 จอ (4 คอลัมน์ 2 แถว) */
-        .monitor-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 15px;
-        }
-        .machine-card {
-            background: var(--card-bg);
-            border: 1px solid #444;
-            border-radius: 8px;
-            padding: 15px;
-            display: flex;
-            flex-direction: column;
-        }
-        .machine-header {
-            display: flex;
-            justify-content: space-between;
-            border-bottom: 1px solid #444;
-            padding-bottom: 10px;
-            margin-bottom: 10px;
-        }
-        .machine-title { font-size: 18px; font-weight: bold; color: #3498db; }
-        .temp-display { font-size: 20px; color: #e74c3c; font-weight: bold; }
+        :root { --bg: #0a0a0a; --card: #1e1e1e; --text: #ffffff; --accent: #00d4ff; }
+        body { background: var(--bg); color: var(--text); font-family: 'Arial', sans-serif; margin: 0; padding: 10px; overflow: hidden; }
         
-        .zone-info {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 5px;
-            margin-top: 10px;
-            font-size: 12px;
-            text-align: center;
-        }
-        .zone-box { background: #3d3d3d; padding: 5px; border-radius: 4px; }
+        /* หัวข้อและยอดรวมรายวัน */
+        .top-bar { display: flex; justify-content: space-between; align-items: center; background: var(--card); padding: 15px 30px; border-radius: 10px; margin-bottom: 10px; }
+        .total-container { text-align: right; }
+        .total-label { font-size: 1.2rem; color: #aaa; }
+        .total-value { font-size: 3.5rem; font-weight: bold; color: #00ff88; line-height: 1; }
+
+        /* Grid 8 จอ */
+        .monitor-grid { display: grid; grid-template-columns: repeat(4, 1fr); grid-template-rows: repeat(2, 1fr); gap: 10px; height: 75vh; }
+        .machine-card { background: var(--card); border-radius: 8px; padding: 10px; display: flex; flex-direction: column; border: 1px solid #333; }
+        .m-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 5px; }
+        .m-name { font-size: 1.5rem; font-weight: bold; color: var(--accent); }
+        .m-temp { font-size: 1.8rem; font-weight: bold; color: #ff4d4d; }
         
-        input[type="date"] {
-            padding: 8px;
-            background: #3d3d3d;
-            color: white;
-            border: none;
-            border-radius: 4px;
-        }
-        canvas { max-height: 180px; }
+        .zone-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; margin-top: 10px; font-size: 0.8rem; }
+        .zone-item { background: #333; padding: 5px; border-radius: 4px; text-align: center; }
+        
+        canvas { flex-grow: 1; max-height: 140px; }
+        .update-tag { position: fixed; bottom: 5px; right: 10px; font-size: 0.7rem; color: #555; }
     </style>
 </head>
 <body>
 
-<div class="header">
-    <div style="font-size: 24px; font-weight: bold;">🏭 8-Channel Production Monitor</div>
+<div class="top-bar">
     <div>
-        <label>วันที่: </label>
-        <input type="date" id="dateFilter" value="2024-05-11" onchange="initDashboard()">
+        <h1 style="margin:0; font-size: 1.8rem;">REAL-TIME MACHINE MONITOR</h1>
+        <div id="current-time" style="color: var(--accent)">Loading time...</div>
+    </div>
+    <div class="total-container">
+        <div class="total-label">ยอดผลิตรวมรายวัน (DAILY TOTAL)</div>
+        <div id="daily-total" class="total-value">0</div>
     </div>
 </div>
 
-<div class="monitor-grid" id="monitorContainer">
-    </div>
+<div class="monitor-grid" id="grid">
+    <!-- M1 - M8 จะถูกสร้างอัตโนมัติ -->
+</div>
+
+<div class="update-tag">Auto-refresh every 30s | Data source: Google Sheets</div>
 
 <script>
-    // รายชื่อเครื่องจักร (สมมติว่าไม่มี M2 ตามโจทย์)
-    const activeMachines = ["M1", "M3", "M4", "M5", "M6", "M7", "M8"]; 
-    
-    function initDashboard() {
-        const container = document.getElementById('monitorContainer');
-        container.innerHTML = ''; // ล้างหน้าจอเก่า
-        
-        activeMachines.forEach(mId => {
-            // สร้าง Card สำหรับแต่ละเครื่อง
-            const card = document.createElement('div');
-            card.className = 'machine-card';
-            
-            // ข้อมูลจำลอง
-            const currentTemp = (Math.random() * 20 + 180).toFixed(1);
-            const prodQty = Math.floor(Math.random() * 1000);
-            
-            card.innerHTML = `
-                <div class="machine-header">
-                    <span class="machine-title">${mId}</span>
-                    <span class="temp-display">${currentTemp}°C</span>
-                </div>
-                <div style="font-size: 13px; margin-bottom: 5px;">ยอดผลิตรวม: <b>${prodQty}</b></div>
-                <canvas id="chart-${mId}"></canvas>
-                <div class="zone-info">
-                    <div class="zone-box">Z1: ${(Math.random()*5+190).toFixed(1)}°</div>
-                    <div class="zone-box">Z2: ${(Math.random()*5+195).toFixed(1)}°</div>
-                    <div class="zone-box">Z3: ${(Math.random()*5+185).toFixed(1)}°</div>
+    // *** สำคัญ: วางลิงก์ CSV ของคุณที่นี่ ***
+    const SHEET_CSV_URL = 'YOUR_CSV_URL_HERE'; 
+    const machines = ["M1", "M2", "M3", "M4", "M5", "M6", "M7", "M8"];
+    let charts = {};
+
+    function initCards() {
+        const grid = document.getElementById('grid');
+        grid.innerHTML = '';
+        machines.forEach(m => {
+            grid.innerHTML += `
+                <div class="machine-card" id="card-${m}">
+                    <div class="m-header">
+                        <span class="m-name">${m}</span>
+                        <span class="m-temp" id="temp-${m}">--°C</span>
+                    </div>
+                    <canvas id="chart-${m}"></canvas>
+                    <div class="zone-row">
+                        <div class="zone-item">Z1: <span id="z1-${m}">--</span></div>
+                        <div class="zone-item">Z2: <span id="z2-${m}">--</span></div>
+                        <div class="zone-item">Z3: <span id="z3-${m}">--</span></div>
+                    </div>
                 </div>
             `;
-            
-            container.appendChild(card);
-            renderSmallChart(mId);
         });
     }
 
-    function renderSmallChart(mId) {
-        const ctx = document.getElementById(`chart-${mId}`).getContext('2d');
-        new Chart(ctx, {
+    async function updateData() {
+        Papa.parse(SHEET_CSV_URL, {
+            download: true,
+            header: true,
+            complete: function(results) {
+                processData(results.data);
+            }
+        });
+    }
+
+    function processData(data) {
+        let dailyTotal = 0;
+        
+        machines.forEach(m => {
+            // กรองข้อมูลเฉพาะของเครื่องนั้นๆ
+            const mData = data.filter(row => row.Machine === m);
+            if (mData.length > 0) {
+                const latest = mData[mData.length - 1]; // ข้อมูลแถวล่าสุด
+                
+                // อัปเดตตัวเลขหน้าจอ
+                document.getElementById(`temp-${m}`).innerText = latest.Heat + '°C';
+                document.getElementById(`z1-${m}`).innerText = latest.Zone1;
+                document.getElementById(`z2-${m}`).innerText = latest.Zone2;
+                document.getElementById(`z3-${m}`).innerText = latest.Zone3;
+                
+                // รวมยอดผลิต (สมมติคอลัมน์ชื่อ Qty)
+                dailyTotal += parseInt(latest.DailyQty || 0);
+
+                updateChart(m, mData.slice(-10)); // โชว์กราฟ 10 จุดล่าสุด
+            }
+        });
+        
+        document.getElementById('daily-total').innerText = dailyTotal.toLocaleString();
+        document.getElementById('current-time').innerText = new Date().toLocaleString();
+    }
+
+    function updateChart(m, lastData) {
+        const ctx = document.getElementById(`chart-${m}`).getContext('2d');
+        if (charts[m]) charts[m].destroy();
+
+        charts[m] = new Chart(ctx, {
             type: 'line',
             data: {
-                labels: Array.from({length: 12}, (_, i) => `${i*2}:00`),
+                labels: lastData.map(d => d.Time || ''),
                 datasets: [{
-                    label: 'Heat',
-                    data: Array.from({length: 12}, () => Math.random() * 30 + 180),
-                    borderColor: '#3498db',
-                    backgroundColor: 'rgba(52, 152, 219, 0.1)',
-                    fill: true,
+                    data: lastData.map(d => d.Heat),
+                    borderColor: '#00d4ff',
+                    borderWidth: 2,
                     pointRadius: 0,
-                    borderWidth: 2
+                    fill: true,
+                    backgroundColor: 'rgba(0, 212, 255, 0.1)',
+                    tension: 0.4
                 }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: { legend: { display: false } },
-                scales: {
+                scales: { 
                     x: { display: false },
-                    y: { 
-                        grid: { color: '#444' },
-                        ticks: { color: '#888', font: { size: 10 } }
-                    }
+                    y: { grid: { color: '#333' }, ticks: { color: '#666', font: { size: 9 } } }
                 }
             }
         });
     }
 
-    // เริ่มทำงาน
-    window.onload = initDashboard;
+    initCards();
+    updateData();
+    setInterval(updateData, 30000); // รีเฟรชทุก 30 วินาที
 </script>
 
 </body>
